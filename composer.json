@@ -1,0 +1,29 @@
+{
+    "name": "zero1/magento2-graphql-client",
+    "description": "PHP GraphQL client for Magento 2",
+    "version": "2.4.8-p0",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "zero1",
+            "email": "support@zero1.co.uk"
+        }
+    ],
+    "keywords": [
+        "Magento",
+        "Magento 2",
+        "GraphQL Client",
+        "API"
+    ],
+    "autoload": {
+        "psr-4": {
+            "Magento2GraphQLClient\\": "src/"
+        }
+    },
+    "require": {
+        "php": "^7.4 || ^8.0",
+        "ext-json": "*",
+        "guzzlehttp/guzzle": "^6.3|^7"
+    }
+}
