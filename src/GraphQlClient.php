@@ -99,6 +99,17 @@ class GraphQlClient
                 'headers' => $this->buildHeaders($request),
                 'json' => $request->toPayload(),
             ]);
+            $this->logger->debug('Got GraphQL response', [
+                'request' => [
+                    'endpoint' => $this->endpoint,
+                    'headers' => $this->buildHeaders($request),
+                    'query' => $request->toPayload(),
+                ],
+                'response' => [
+                    'body' => (string) $httpResponse->getBody(),
+                    'status_code' => $httpResponse->getStatusCode(),
+                ]
+            ]);
         } catch (GuzzleException $exception) {
             throw GraphQlTransportException::fromThrowable($exception);
         }

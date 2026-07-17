@@ -1,7 +1,7 @@
 {
     "name": "zero1/magento2-graphql-client",
     "description": "PHP GraphQL client for Magento 2",
-    "version": "2.4.8-p0",
+    "version": "2.4.8-p1",
     "license": "MIT",
     "type": "library",
     "authors": [

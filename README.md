@@ -85,22 +85,6 @@ The `AdobeCommerceClient` contains common methods mapped to 2.4.8 operations:
 - `createEmptyCart()`
 - `createCustomerCart()`
 
-Example:
-
-```php
-<?php
-
-$data = $commerce->products([
-	'search' => 'hoodie',
-	'pageSize' => 12,
-	'currentPage' => 1,
-]);
-
-foreach (($data['products']['items'] ?? []) as $item) {
-	echo ($item['sku'] ?? '') . PHP_EOL;
-}
-```
-
 ## Low-level GraphQL client
 
 Use `GraphQlClient` when you want full control over operation text and headers.
@@ -170,64 +154,109 @@ The included set is based on the Adobe Commerce 2.4.8 GraphQL reference and can 
 
 ## Examples
 
-### Product Search Example
+### Product Search Example (with custom attributes)
 
-Search for products and retrieve store configuration.
+```php
+use Magento2GraphQLClient\Types\ProductAttributeFilterInput;
+use Magento2GraphQLClient\Types\ProductAttributeSortInput;
+use Magento2GraphQLClient\Types\FilterEqualTypeInput;
+use Magento2GraphQLClient\Types\ProductInterface;
+use Magento2GraphQLClient\Types\Product;
+use Magento2GraphQLClient\Types\ComplexTextValue;
+use Magento2GraphQLClient\Types\ProductImage;
+use Magento2GraphQLClient\Types\ProductCustomAttributes;
+use Magento2GraphQLClient\Types\AttributeMetadataError;
+use Magento2GraphQLClient\Types\AttributeValueInterface;
+use Magento2GraphQLClient\Types\AttributeSelectedOptionInterface;
+use Magento2GraphQLClient\Types\AttributeSelectedOptionsInterface;
 
-Location: `examples/product-search-example.php`
+$searchTerm = 'Hoodie';
+$categoryIds = [1,2,3];
 
-Run it:
+$filterCriteria = [
+	ProductAttributeFilterInput::CATEGORY_ID => FilterEqualTypeInput::fromValue($category), // in this category
+	ProductAttributeFilterInput::SKU => FilterEqualTypeInput::fromValue(['sku1', 'sku2']), // is one of these skus
+];
+$filter = ProductAttributeFilterInput::create($filterCriteria);
 
-```bash
-MAGENTO_GRAPHQL_ENDPOINT="https://your-store.example/graphql" \
-MAGENTO_GRAPHQL_STORE="default" \
-php examples/product-search-example.php "hoodie"
+$sort = ProductAttributeSortInput::createWithSort('some_attribute', ProductAttributeSortInput::SORT_DESC);
+
+$r = $client->products(
+	Product::withAttributes([
+		ProductInterface::TYPE_NAME,
+		ProductInterface::NAME,
+		ProductInterface::SKU,
+		ProductInterface::ID,
+		ProductInterface::UID,
+		ProductInterface::SHORT_DESCRIPTION => ComplexTextValue::withAttributes([
+			ComplexTextValue::HTML,
+		]),
+		ProductInterface::THUMBNAIL => ProductImage::withAttributes([
+			ProductImage::LABEL,
+			ProductImage::URL,
+		]),
+		ProductInterface::RATING_SUMMARY,
+		ProductInterface::REVIEW_COUNT,
+		ProductInterface::CUSTOM_ATTRIBUTESV2 => ProductCustomAttributes::withAttributes([
+			ProductCustomAttributes::ERRORS => AttributeMetadataError::withAttributes([
+				AttributeMetadataError::TYPE,
+				AttributeMetadataError::MESSAGE,
+			]),
+			ProductCustomAttributes::ITEMS => AttributeValueInterface::withAttributes([
+				AttributeValueInterface::CODE,
+			])->on(AttributeValue::TYPE_NAME, AttributeValue::withAttributes([
+				AttributeValue::VALUE,
+			]))->on(AttributeSelectedOptionsInterface::TYPE_NAME, AttributeSelectedOptionsInterface::withAttributes([
+				AttributeSelectedOptionsInterface::SELECTED_OPTIONS => AttributeSelectedOptionInterface::withAttributes([
+					AttributeSelectedOptionInterface::LABEL,
+					AttributeSelectedOptionInterface::VALUE,
+				])
+			])),
+		])->withFilter(AttributeFilterInput::create([
+			AttributeFilterInput::USED_IN_PRODUCT_LISTING => true,
+		])),
+	]),
+	search: $search,
+	filter: $filter,
+	pageSize: $pageSize,
+	currentPage: $currentPage,
+	sort: $sort
+);
 ```
 
-Specify the search term as the first argument. If omitted, defaults to `"hoodie"`:
-
-```bash
-MAGENTO_GRAPHQL_ENDPOINT="https://your-store.example/graphql" \
-php examples/product-search-example.php
-```
 
 ### Category Listing Example
+Get all categories under a parent ID
 
-List all categories in the store with pagination support.
+```php
+use Magento2GraphQLClient\Types\CMSBlock;
+use Magento2GraphQLClient\Types\CategoryInterface;
+use Magento2GraphQLClient\Types\CategoryFilterInput;
+use Magento2GraphQLClient\Types\FilterEqualTypeInput;
 
-Location: `examples/category-listing-example.php`
+$parentCategoryId = 123;
 
-Run it:
+$response = $client->categories(
+	[
+		CategoryInterface::UID,
+		CategoryInterface::ID,
+		CategoryInterface::NAME,
+		CMSBlock::withAttributes([
+			CMSBlock::IDENTIFIER,
+			CMSBlock::CONTENT,
+		]),
+		CategoryInterface::NAME,
+		CategoryInterface::INCLUDE_IN_MENU
+	],
+	[
+		'filters' => CategoryFilterInput::forParentId(FilterEqualTypeInput::fromValue($parentCategoryId)),
+	]);
 
-```bash
-MAGENTO_GRAPHQL_ENDPOINT="https://your-store.example/graphql" \
-MAGENTO_GRAPHQL_STORE="default" \
-MAGENTO_PAGE_SIZE="20" \
-MAGENTO_CURRENT_PAGE="1" \
-php examples/category-listing-example.php
+foreach(($response['categories']['items'] ?? []) as $category) {
+	$data[] = [
+		'uid' => $category['uid'],
+		'id' => $category['id'],
+		'name' => $category['name'],
+	];
+}
 ```
-
-Control pagination with `MAGENTO_PAGE_SIZE` and `MAGENTO_CURRENT_PAGE` environment variables.
-
-### Category Tree Example
-
-Traverse the category hierarchy tree to a specified depth level and display aggregated statistics.
-
-Location: `examples/category-tree-example.php`
-
-Run it:
-
-```bash
-MAGENTO_GRAPHQL_ENDPOINT="https://your-store.example/graphql" \
-MAGENTO_GRAPHQL_STORE="default" \
-php examples/category-tree-example.php 3
-```
-
-Specify the maximum level (depth) as the first argument. If omitted, defaults to `2`:
-
-```bash
-MAGENTO_GRAPHQL_ENDPOINT="https://your-store.example/graphql" \
-php examples/category-tree-example.php
-```
-
-Output includes a hierarchical category tree display and aggregated statistics such as total categories by level and children counts.
